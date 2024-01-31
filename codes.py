@@ -2,6 +2,10 @@
 import bpy
 import math
 from mathutils import Vector
+import numpy as np
+import os
+from mathutils import Matrix
+#import cv2
 
 print ('starting')
 
@@ -125,13 +129,137 @@ def frame_object_in_camera(object_name, camera_name, scale_factor=2.8):
 #    bpy.context.scene.render.pixel_aspect_x = 1
 #    bpy.context.scene.render.pixel_aspect_y = 1
     bpy.context.scene.render.resolution_percentage = 100
+ 
+ 
 
+
+def generate_depth_map(camera_name, object_name):
+    # Get the camera and object by name
+    camera = bpy.data.objects.get(camera_name)
+    obj = bpy.data.objects.get(object_name)
+
+    if camera is None:
+        print("Error: Camera not found.")
+        return None
+    if obj is None:
+        print("Error: Object not found.")
+        return None
+
+    # Set the scene camera
+    bpy.context.scene.camera = camera
+
+    # Set up rendering settings
+    output_directory = "/home/hadi/Desktop/GF/DataSet/MyDataset/"  # Change this to your desired directory
+    output_filename = "depth_map"
+
+    bpy.context.scene.render.image_settings.file_format = 'OPEN_EXR'
+    bpy.context.scene.render.image_settings.color_depth = '32'
+    bpy.context.scene.render.filepath = output_directory + output_filename
+    bpy.context.scene.render.use_compositing = True
+
+    # Set up nodes for rendering the depth map
+    bpy.context.scene.use_nodes = True
+    tree = bpy.context.scene.node_tree
+    links = tree.links
+
+    # Clear default nodes
+    for node in tree.nodes:
+        tree.nodes.remove(node)
+
+    # Create nodes for rendering the depth map
+    render_layers_node = tree.nodes.new('CompositorNodeRLayers')
+    normalize_node = tree.nodes.new('CompositorNodeNormalize')
+
+    # Link nodes
+    links.new(render_layers_node.outputs[2], normalize_node.inputs[0])
+    links.new(normalize_node.outputs[0], tree.nodes.new('CompositorNodeOutputFile').inputs[0])
+
+    # Render the scene
+    bpy.ops.render.render(write_still=True)
+
+    # Load the depth map and return it as a numpy array
+    depth_map_path = bpy.path.abspath(output_directory + output_filename)
+    depth_map = bpy.data.images.load(depth_map_path)
+
+    # Convert the depth map to a numpy array
+    depth_map_array = np.array(depth_map.pixels[:])
+    width, height = depth_map.size[:]
+
+    # Reshape the array to a 2D array
+    depth_map_array = depth_map_array.reshape((height, width))
+
+    # Flip the depth map vertically
+    depth_map_array = np.flipud(depth_map_array)
+
+    return depth_map_array
+
+def save_depth_map_as_image(depth_map_array, output_filename):
+    # Normalize depth map values to [0, 1]
+    normalized_depth_map = (depth_map_array - np.min(depth_map_array)) / (np.max(depth_map_array) - np.min(depth_map_array))
+
+    # Create a new image
+    depth_map_image = bpy.data.images.new("Depth Map", width=len(depth_map_array[0]), height=len(depth_map_array))
+
+    # Flatten the depth map array
+    depth_map_pixels = normalized_depth_map.flatten()
+
+    # Set the image pixels
+    depth_map_image.pixels = depth_map_pixels
+
+    # Save the image to a file
+    depth_map_image.file_format = 'PNG'  # Change the format if needed
+    depth_map_image.filepath_raw = output_filename
+    depth_map_image.save()
+
+def get_depth():
+    """Obtains depth map from Blender render.
+    :return: The depth map of the rendered camera view as a numpy array of size (H,W).
+    """
+    z = bpy.data.images['Viewer Node']
+    w, h = z.size
+    dmap = np.array(z.pixels[:], dtype=np.float32) # convert to numpy array
+    dmap = np.reshape(dmap, (h, w, 4))[:,:,0]
+    dmap = np.rot90(dmap, k=2)
+    dmap = np.fliplr(dmap)
+    return dmap
+
+def dmap2norm(dmap):
+    """Computes surface normals from a depth map.
+    :param dmap: A grayscale depth map image as a numpy array of size (H,W).
+    :return: The corresponding surface normals map as numpy array of size (H,W,3).
+    """
+    zx = cv2.Sobel(dmap, cv2.CV_64F, 1, 0, ksize=5)
+    zy = cv2.Sobel(dmap, cv2.CV_64F, 0, 1, ksize=5)
+
+    # convert to unit vectors
+    normals = np.dstack((-zx, -zy, np.ones_like(dmap)))
+    length = np.linalg.norm(normals, axis=2)
+    normals[:, :, :] /= length
+
+    # offset and rescale values to be in 0-1
+    normals += 1
+    normals /= 2
+    return normals[:, :, ::-1].astype(np.float32)
 
 # Sample_USES:________________________
 
 # make_object_mirrory('Sphere') 
 # adjust_camera("Camera", (5.0, 3.0, 4.0), (45.0, 0.0, 0.0))
-frame_object_in_camera("Sphere", "Camera")
+#frame_object_in_camera("Cube", "Camera",scale_factor=2.9)
+#depth_map = generate_depth_map("Camera", "Cube")
+#print (depth_map.shape)
+#save_depth_map_as_image(depth_map, "depth_map.png")
+
+
+DMAP = get_depth()
+#DMAP = dmap2norm(DMAP)
+
+fname = "depth.npz" 
+with open(fname, "wb") as f:
+    np.savez(f, DMAP)
+    
+
 
 print ('done')
+
 
