@@ -26,11 +26,12 @@ The generated dataset can be utilized for various purposes, including:
     Training and evaluating depth estimation algorithms
     Testing object recognition and segmentation models
     Enhancing scene understanding in computer vision tasks
+    3D object reconstruction
 
 ## Dataset Usage
 
 Researchers, developers, and enthusiasts are encouraged to explore and utilize the dataset for academic, research, and non-commercial projects. Contributions and feedback are welcome to improve the dataset and its applicability across different domains.
 ## Contributors
 
-    [M.Hadi Sepanj]
-    [University of Waterloo]
+    M.Hadi Sepanj
+    University of Waterloo
