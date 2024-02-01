@@ -241,23 +241,140 @@ def dmap2norm(dmap):
     normals /= 2
     return normals[:, :, ::-1].astype(np.float32)
 
-# Sample_USES:________________________
+def modify_pattern_plate(plate_name, position, rotation_angles, pattern_image_path):
+    # Get the plate object by name
+    plate_object = bpy.data.objects.get(plate_name)
+    if not plate_object:
+        print(f"Plate object with name '{plate_name}' not found.")
+        return
+    
+    # Set the position
+    plate_object.location = position
+    
+    # Set the rotation (in radians)
+    plate_object.rotation_euler = rotation_angles
+    
+    # Apply the pattern texture
+    # Create a new material
+    material = bpy.data.materials.new(name="PatternMaterial")
+    material.use_nodes = True
+    nodes = material.node_tree.nodes
+    links = material.node_tree.links
+    
+    # Clear default nodes
+    for node in nodes:
+        nodes.remove(node)
+    
+    # Add image texture node
+    image_texture_node = nodes.new(type='ShaderNodeTexImage')
+    image_texture_node.image = bpy.data.images.load(pattern_image_path)
+    
+    # Add diffuse BSDF node
+    diffuse_node = nodes.new(type='ShaderNodeBsdfDiffuse')
+    
+    # Add output node
+    output_node = nodes.new(type='ShaderNodeOutputMaterial')
+    
+    # Link nodes
+    links.new(image_texture_node.outputs[0], diffuse_node.inputs[0])
+    links.new(diffuse_node.outputs[0], output_node.inputs[0])
+    
+    # Assign the material to the plate object
+    if plate_object.data.materials:
+        plate_object.data.materials[0] = material
+    else:
+        plate_object.data.materials.append(material)
 
-# make_object_mirrory('Sphere') 
-# adjust_camera("Camera", (5.0, 3.0, 4.0), (45.0, 0.0, 0.0))
+def write_depth_map_into_numpy(fname, DMAP):
+    with open(fname, "wb") as f:
+        np.savez(f, DMAP)
+
+def write_frame_into_image_file(camera_name):
+    
+    
+    
+# Sample_USE:________________________
+
+#make_object_mirrory('Sphere') 
+#adjust_camera("Camera", (5.0, 3.0, 4.0), (45.0, 0.0, 0.0))
 #frame_object_in_camera("Cube", "Camera",scale_factor=2.9)
 #depth_map = generate_depth_map("Camera", "Cube")
 #print (depth_map.shape)
 #save_depth_map_as_image(depth_map, "depth_map.png")
-
-
-DMAP = get_depth()
+#DMAP = get_depth()
 #DMAP = dmap2norm(DMAP)
 
-fname = "depth.npz" 
-with open(fname, "wb") as f:
-    np.savez(f, DMAP)
+#fname = "depth.npz" 
+#with open(fname, "wb") as f:
+#    np.savez(f, DMAP)
     
+#modify_pattern_plate("Plane", (1.0, 2.0, 0.0), (0.0, 5.0, 1.57), "pattern_1.png")
+
+###############################################################################################################################
+
+
+    
+    
+
+def target_objects_name(object_input_import_from_file, import_path):
+    
+    return object_names # is an array of the object names, if from blender then just the names, if from the any imported file path 
+                            # return the path to that file
+
+def import_object_and_get_the_name(object_path):
+    # todo: import the object from the path into blender and then return the equivalent name in the blender
+    
+    return object_name
+
+def perform_capturing_2D_depthMap(obj_name, camera_name, camera_position_angle_change_matrix): 
+    # camera_position_angle_change_matrix or number of samples
+    # to do: use adjust_camera => frame_object_in_camera => generate_depth_map?? or  get_depth => save_depth_map_as_image???? 
+    
+    return (2D_images, DepthMap)
+
+def perform_pattern_plate_change(pattern_position_angle_change_matrix, i):
+# to do     change the pattern plate using modify_pattern_plate, manage the images from file or fixed patterns !!!
+    return 
+
+
+def write_into_files(2D_images, DepthMap):
+    # to do : write_depth_map_into_numpy and write_frame_into_image_file
+
+
+def main():
+    # Camera Settings
+    camera_name = 'Camera'
+    camera_position_angle_change_matrix = ?
+    ##################################################################
+    # Patten setting
+    pattern_position_angle_change_matrix = ?
+    number_of_pattern_plate_changes = ?
+    ##################################################################
+    
+    object_input_import_from_file = False # True if objects are imported from a path e.x. .stl files
+    import_path = ''
+    if object_input_import_from_file:
+        import_path = 'SOME_PATH'
+    #################################################################
+    
+    target_objects_name = target_objects_name(object_input_import_from_file,import_path)
+    
+    for obj_name in target_objects_name:
+        if object_input_import_from_file:
+            obj_name = import_object_and_get_the_name(obj)
+            
+        make_object_mirrory(obj_name)
+        for i in range(number_of_pattern_plate_changes):
+            2D_images, DepthMap = perform_capturing_2D_depthMap (obj_name, camera_name, camera_position_angle_change_matrix)
+            write_into_files(2D_images, DepthMap)
+            perform_pattern_plate_change(pattern_position_angle_change_matrix, i)
+            
+    
+    
+    
+main()
+
+
 
 
 print ('done')
